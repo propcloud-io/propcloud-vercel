@@ -17,4 +17,3 @@ const createServerClient = () => {
 }
 
 export { createBrowserClient, createServerClient }
-

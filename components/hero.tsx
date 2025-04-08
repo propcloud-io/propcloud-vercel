@@ -14,7 +14,13 @@ export function Hero() {
           </Badge>
 
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-            Autonomous Property Management for Short-Term Rentals
+            <span className="text-black">All-in-One</span>{" "}
+            <span className="text-primary">
+              Property
+              <br />
+              Management
+            </span>{" "}
+            <span className="text-black">Platform</span>
           </h1>
 
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
@@ -33,4 +39,3 @@ export function Hero() {
     </section>
   )
 }
-

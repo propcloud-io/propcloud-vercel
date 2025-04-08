@@ -293,4 +293,3 @@ export function WaitlistForm({ className = "", variant = "default", expanded = f
     </form>
   )
 }
-

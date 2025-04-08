@@ -18,4 +18,3 @@ This project is built with Next.js 14 using the App Router, Tailwind CSS for sty
 - **Deployment**: Vercel
 
 ## Project Structure
-

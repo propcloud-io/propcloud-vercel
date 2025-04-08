@@ -4,57 +4,55 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
-import { ArrowLeft, Loader2 } from "lucide-react"
-import Link from "next/link"
+import { ChevronLeft, Loader2 } from "lucide-react"
 
 export default function AddPropertyPage() {
-  const [formData, setFormData] = useState({
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    zip: "",
-    country: "US",
-    description: "",
-    bedrooms: "1",
-    bathrooms: "1",
-    max_guests: "2",
-    price_per_night: "100",
-    cleaning_fee: "50",
-    status: "inactive",
-  })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState("basic")
   const { user } = useAuth()
-  const supabase = createBrowserClient()
-  const router = useRouter()
   const { toast } = useToast()
+  const router = useRouter()
+  const supabase = createBrowserClient()
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  // Basic information
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [propertyType, setPropertyType] = useState("")
+  const [status, setStatus] = useState("active")
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  // Location
+  const [address, setAddress] = useState("")
+  const [city, setCity] = useState("")
+  const [state, setState] = useState("")
+  const [zip, setZip] = useState("")
+  const [country, setCountry] = useState("")
+
+  // Details
+  const [bedrooms, setBedrooms] = useState("")
+  const [bathrooms, setBathrooms] = useState("")
+  const [maxGuests, setMaxGuests] = useState("")
+  const [pricePerNight, setPricePerNight] = useState("")
+  const [cleaningFee, setCleaningFee] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user) {
+    if (!name) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "You must be logged in to add a property",
+        title: "Missing information",
+        description: "Property name is required.",
       })
       return
     }
@@ -62,26 +60,36 @@ export default function AddPropertyPage() {
     setIsSubmitting(true)
 
     try {
-      // Convert numeric strings to numbers
-      const propertyData = {
-        ...formData,
-        user_id: user.id,
-        bedrooms: Number.parseInt(formData.bedrooms),
-        bathrooms: Number.parseInt(formData.bathrooms),
-        max_guests: Number.parseInt(formData.max_guests),
-        price_per_night: Number.parseFloat(formData.price_per_night),
-        cleaning_fee: Number.parseFloat(formData.cleaning_fee),
-        images: [], // Empty array for now, will be populated later
-        amenities: [], // Empty array for now, will be populated later
+      const { data, error } = await supabase
+        .from("properties")
+        .insert([
+          {
+            user_id: user?.id,
+            name,
+            description,
+            property_type: propertyType,
+            status,
+            address,
+            city,
+            state,
+            zip,
+            country,
+            bedrooms: bedrooms ? Number.parseInt(bedrooms) : null,
+            bathrooms: bathrooms ? Number.parseFloat(bathrooms) : null,
+            max_guests: maxGuests ? Number.parseInt(maxGuests) : null,
+            price_per_night: pricePerNight ? Number.parseFloat(pricePerNight) : null,
+            cleaning_fee: cleaningFee ? Number.parseFloat(cleaningFee) : null,
+          },
+        ])
+        .select()
+
+      if (error) {
+        throw error
       }
 
-      const { data, error } = await supabase.from("properties").insert([propertyData]).select().single()
-
-      if (error) throw error
-
       toast({
-        title: "Success",
-        description: "Property added successfully",
+        title: "Property added",
+        description: "Your property has been added successfully.",
       })
 
       router.push("/dashboard/properties")
@@ -89,44 +97,53 @@ export default function AddPropertyPage() {
       console.error("Error adding property:", error)
       toast({
         variant: "destructive",
-        title: "Error",
-        description: "Failed to add property. Please try again.",
+        title: "Failed to add property",
+        description: "Please try again later.",
       })
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+  }
+
   return (
-    <div className="container mx-auto py-6">
+    <div>
       <div className="flex items-center mb-6">
-        <Button variant="ghost" size="sm" asChild className="mr-4">
+        <Button variant="ghost" size="sm" asChild className="mr-2">
           <Link href="/dashboard/properties">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Properties
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back to Properties
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold">Add New Property</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Property Details</CardTitle>
-          <CardDescription>Enter the details of your property. You can edit this information later.</CardDescription>
+          <CardTitle>Add New Property</CardTitle>
+          <CardDescription>Enter the details of your property to add it to your portfolio.</CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Basic Information</h3>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <Tabs defaultValue="basic" value={activeTab} onValueChange={handleTabChange}>
+              <TabsList className="grid w-full grid-cols-3 mb-8">
+                <TabsTrigger value="basic">Basic Information</TabsTrigger>
+                <TabsTrigger value="location">Location</TabsTrigger>
+                <TabsTrigger value="details">Property Details</TabsTrigger>
+              </TabsList>
 
-              <div className="grid grid-cols-1 gap-4">
+              <TabsContent value="basic" className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Property Name</Label>
+                  <Label htmlFor="name">
+                    Property Name <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    placeholder="Beach Villa"
+                    placeholder="e.g., Beachfront Villa"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
                   />
                 </div>
@@ -135,220 +152,201 @@ export default function AddPropertyPage() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleChange}
-                    placeholder="A beautiful beachfront villa with stunning ocean views..."
-                    rows={4}
-                    required
+                    placeholder="Describe your property..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={5}
                   />
                 </div>
-              </div>
-            </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Location</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="propertyType">Property Type</Label>
+                    <Select value={propertyType} onValueChange={setPropertyType}>
+                      <SelectTrigger id="propertyType">
+                        <SelectValue placeholder="Select property type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="apartment">Apartment</SelectItem>
+                        <SelectItem value="house">House</SelectItem>
+                        <SelectItem value="villa">Villa</SelectItem>
+                        <SelectItem value="condo">Condo</SelectItem>
+                        <SelectItem value="cabin">Cabin</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={status} onValueChange={setStatus}>
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="maintenance">Maintenance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6">
+                  <Button type="button" onClick={() => handleTabChange("location")}>
+                    Next: Location
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="location" className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="address">Street Address</Label>
                   <Input
                     id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="123 Beach Road"
-                    required
+                    placeholder="123 Main St"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    placeholder="Miami"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input id="city" placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State/Province</Label>
+                    <Input
+                      id="state"
+                      placeholder="State/Province"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="state">State/Province</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleChange}
-                    placeholder="Florida"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="zip">ZIP/Postal Code</Label>
+                    <Input
+                      id="zip"
+                      placeholder="ZIP/Postal Code"
+                      value={zip}
+                      onChange={(e) => setZip(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      placeholder="Country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="zip">ZIP/Postal Code</Label>
-                  <Input
-                    id="zip"
-                    name="zip"
-                    value={formData.zip}
-                    onChange={handleChange}
-                    placeholder="33139"
-                    required
-                  />
+                <div className="flex justify-between mt-6">
+                  <Button type="button" variant="outline" onClick={() => handleTabChange("basic")}>
+                    Back
+                  </Button>
+                  <Button type="button" onClick={() => handleTabChange("details")}>
+                    Next: Property Details
+                  </Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="details" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bedrooms">Bedrooms</Label>
+                    <Input
+                      id="bedrooms"
+                      type="number"
+                      min="0"
+                      placeholder="Number of bedrooms"
+                      value={bedrooms}
+                      onChange={(e) => setBedrooms(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bathrooms">Bathrooms</Label>
+                    <Input
+                      id="bathrooms"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="Number of bathrooms"
+                      value={bathrooms}
+                      onChange={(e) => setBathrooms(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="maxGuests">Max Guests</Label>
+                    <Input
+                      id="maxGuests"
+                      type="number"
+                      min="1"
+                      placeholder="Maximum number of guests"
+                      value={maxGuests}
+                      onChange={(e) => setMaxGuests(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Select value={formData.country} onValueChange={(value) => handleSelectChange("country", value)}>
-                    <SelectTrigger id="country">
-                      <SelectValue placeholder="Select country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="US">United States</SelectItem>
-                      <SelectItem value="CA">Canada</SelectItem>
-                      <SelectItem value="MX">Mexico</SelectItem>
-                      <SelectItem value="UK">United Kingdom</SelectItem>
-                      <SelectItem value="FR">France</SelectItem>
-                      <SelectItem value="ES">Spain</SelectItem>
-                      <SelectItem value="IT">Italy</SelectItem>
-                      <SelectItem value="AU">Australia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="pricePerNight">Price per Night ($)</Label>
+                    <Input
+                      id="pricePerNight"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Price per night"
+                      value={pricePerNight}
+                      onChange={(e) => setPricePerNight(e.target.value)}
+                    />
+                  </div>
 
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Property Details</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bedrooms">Bedrooms</Label>
-                  <Select value={formData.bedrooms} onValueChange={(value) => handleSelectChange("bedrooms", value)}>
-                    <SelectTrigger id="bedrooms">
-                      <SelectValue placeholder="Select bedrooms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <Label htmlFor="cleaningFee">Cleaning Fee ($)</Label>
+                    <Input
+                      id="cleaningFee"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Cleaning fee"
+                      value={cleaningFee}
+                      onChange={(e) => setCleaningFee(e.target.value)}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="bathrooms">Bathrooms</Label>
-                  <Select value={formData.bathrooms} onValueChange={(value) => handleSelectChange("bathrooms", value)}>
-                    <SelectTrigger id="bathrooms">
-                      <SelectValue placeholder="Select bathrooms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="flex justify-between mt-6">
+                  <Button type="button" variant="outline" onClick={() => handleTabChange("location")}>
+                    Back
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding Property...
+                      </>
+                    ) : (
+                      "Add Property"
+                    )}
+                  </Button>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="max_guests">Max Guests</Label>
-                  <Select
-                    value={formData.max_guests}
-                    onValueChange={(value) => handleSelectChange("max_guests", value)}
-                  >
-                    <SelectTrigger id="max_guests">
-                      <SelectValue placeholder="Select max guests" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16].map((num) => (
-                        <SelectItem key={num} value={num.toString()}>
-                          {num}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Pricing</h3>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price_per_night">Price per Night ($)</Label>
-                  <Input
-                    id="price_per_night"
-                    name="price_per_night"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.price_per_night}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cleaning_fee">Cleaning Fee ($)</Label>
-                  <Input
-                    id="cleaning_fee"
-                    name="cleaning_fee"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.cleaning_fee}
-                    onChange={handleChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Status</h3>
-
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="status">Property Status</Label>
-                  <Select value={formData.status} onValueChange={(value) => handleSelectChange("status", value)}>
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                      <SelectItem value="maintenance">Maintenance</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" type="button" asChild>
-              <Link href="/dashboard/properties">Cancel</Link>
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Add Property"
-              )}
-            </Button>
-          </CardFooter>
-        </form>
+              </TabsContent>
+            </Tabs>
+          </form>
+        </CardContent>
       </Card>
     </div>
   )
 }
-
