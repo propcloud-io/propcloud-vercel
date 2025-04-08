@@ -11,6 +11,7 @@ type AuthContextType = {
   user: User | null
   session: Session | null
   isLoading: boolean
+  isAdmin: boolean
   signUp: (email: string, password: string, metadata?: any) => Promise<{ error: any }>
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signOut: () => Promise<void>
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false)
   const router = useRouter()
   const supabase = createBrowserClient()
 
@@ -42,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setSession(session)
         setUser(session?.user || null)
+        setIsAdmin(session?.user?.app_metadata?.role === "admin")
       } catch (error) {
         console.error("Error getting session:", error)
       } finally {
@@ -56,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user || null)
+      setIsAdmin(session?.user?.app_metadata?.role === "admin")
       router.refresh()
     })
 
@@ -121,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     session,
     isLoading,
+    isAdmin,
     signUp,
     signIn,
     signOut,

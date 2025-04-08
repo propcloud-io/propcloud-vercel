@@ -8,9 +8,10 @@ import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Download, Send, Search } from "lucide-react"
+import { Download, Send, Search, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createBrowserClient } from "@/lib/supabase"
+import { useAuth } from "@/contexts/auth-context"
 
 interface WaitlistEntry {
   id: string
@@ -30,6 +31,7 @@ export default function AdminWaitlist() {
   const [apiKey, setApiKey] = useState("")
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const { user, isLoading: isAuthLoading, isAdmin } = useAuth()
   const { toast } = useToast()
   const supabase = createBrowserClient()
 
@@ -59,38 +61,20 @@ export default function AdminWaitlist() {
   }
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user && !isAuthLoading) {
       fetchWaitlist()
     }
-  }, [isAuthenticated])
-
-  const handleAuthenticate = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    // In a real implementation, you would validate the API key
-    // For now, we'll just check if it's not empty
-    if (apiKey.trim() === "") {
-      toast({
-        variant: "destructive",
-        title: "Invalid API key",
-        description: "Please enter a valid API key.",
-      })
-      return
-    }
-
-    // Set authenticated and fetch waitlist
-    setIsAuthenticated(true)
-  }
+  }, [user, isAuthLoading])
 
   const handleInvite = async (email: string) => {
     try {
-      // Call the backend API route
+      const { data: { session } } = await supabase.auth.getSession()
+
       const response = await fetch("/api/waitlist/invite", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Add authentication header if needed (using placeholder API key for now)
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({ email }),
       })
@@ -106,7 +90,6 @@ export default function AdminWaitlist() {
         description: data.message || `Invitation processed for ${email}`,
       })
 
-      // Refresh the waitlist to show the updated status
       fetchWaitlist()
     } catch (error: any) {
       console.error("Error sending invitation:", error)
@@ -177,27 +160,24 @@ export default function AdminWaitlist() {
     }
   }
 
-  if (!isAuthenticated) {
+  if (isAuthLoading) {
     return (
-      <div className="container py-10">
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (!user || !isAdmin) {
+    return (
+      <div className="container py-10 text-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle>Admin Authentication</CardTitle>
-            <CardDescription>Enter your API key to access the waitlist</CardDescription>
+            <CardTitle>Access Denied</CardTitle>
+            <CardDescription>You do not have permission to access this page.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAuthenticate} className="space-y-4">
-              <Input
-                type="password"
-                placeholder="API Key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                required
-              />
-              <Button type="submit" className="w-full">
-                Authenticate
-              </Button>
-            </form>
+            <p>Please log in with an administrator account.</p>
           </CardContent>
         </Card>
       </div>
