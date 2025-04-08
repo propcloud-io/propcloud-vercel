@@ -82,33 +82,38 @@ export default function AdminWaitlist() {
     setIsAuthenticated(true)
   }
 
-  const handleInvite = async (id: string, email: string) => {
+  const handleInvite = async (email: string) => {
     try {
-      const { error } = await supabase
-        .from("waitlist")
-        .update({
-          status: "invited",
-          invited_at: new Date().toISOString(),
-        })
-        .eq("id", id)
+      // Call the backend API route
+      const response = await fetch("/api/waitlist/invite", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Add authentication header if needed (using placeholder API key for now)
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ email }),
+      })
 
-      if (error) {
-        throw error
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send invitation")
       }
 
       toast({
-        title: "Invitation sent",
-        description: `Invitation sent to ${email}`,
+        title: "Invitation Processed",
+        description: data.message || `Invitation processed for ${email}`,
       })
 
-      // Refresh the waitlist
+      // Refresh the waitlist to show the updated status
       fetchWaitlist()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending invitation:", error)
       toast({
         variant: "destructive",
         title: "Failed to send invitation",
-        description: "Please try again later.",
+        description: error.message || "Please try again later.",
       })
     }
   }
@@ -259,13 +264,13 @@ export default function AdminWaitlist() {
                       <TableCell>{entry.email}</TableCell>
                       <TableCell>{entry.full_name || "-"}</TableCell>
                       <TableCell>{entry.company_name || "-"}</TableCell>
-                      <TableCell>{entry.properties_count || "-"}</TableCell>
+                      <TableCell className="text-center">{entry.properties_count || "-"}</TableCell>
                       <TableCell>{new Date(entry.created_at).toLocaleDateString()}</TableCell>
                       <TableCell>{getStatusBadge(entry.status)}</TableCell>
                       <TableCell className="text-right">
                         {entry.status === "pending" && (
-                          <Button size="sm" variant="outline" onClick={() => handleInvite(entry.id, entry.email)}>
-                            <Send className="mr-2 h-3 w-3" />
+                          <Button variant="outline" size="sm" onClick={() => handleInvite(entry.email)}>
+                            <Send className="mr-2 h-4 w-4" />
                             Invite
                           </Button>
                         )}
